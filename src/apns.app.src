@@ -1,0 +1,20 @@
+{application, apns,
+ [
+  {description, ""},
+  {vsn, "1.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  ssl
+                 ]},
+  {mod, {apns_app, []}},
+  {env, [
+			{sandbox, true},
+			{cert_file,			default},	%% cert.sandbox.pem or cert.pem
+			{key_file,			default},	%% none
+			{cert_password,		default},	%% none
+			{timeout,			default},	%% 60s
+			{feedback_timeout,	default}	%% 60m
+	  ]}
+ ]}.
