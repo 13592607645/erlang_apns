@@ -3,10 +3,33 @@
 -include("apns.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -include("eunit.hrl").
-%% replace the token(64 chars) with your own!
--define(TOKEN, "0000000000000000000000000000000000000000000000000000000000000000").
 
 -define(ID, 'apns_test').
+
+%% write your device token into the corresponding '.token' file
+%% the device token is 64 chars long.
+-define(TOKEN_FILE, "priv/test.token").
+-define(TOKEN_SANDBOX_FILE, "priv/test.sandbox.token").
+%% or
+%% replace the string of token with your own.
+-define(TOKEN, "0000000000000000000000000000000000000000000000000000000000000000").
+%% @hidden
+get_token() ->
+	File=	case apns:get_env(sandbox, false) of
+				true -> ?TOKEN_SANDBOX_FILE;
+				false-> ?TOKEN_FILE
+			end,
+	case filelib:is_file(File) of
+		true ->
+			{ok, <<Token:64/binary,_/binary>>}= file:read_file(File),
+			erlang:display("Using token loaded from file: "++File),
+			erlang:display(binary_to_list(Token)),
+			Token;
+		false->
+			erlang:display("Using token defined by macro."),
+			erlang:display(?TOKEN),
+			?TOKEN
+	end.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -18,9 +41,10 @@ apns_test_() ->
 	{setup,
 		fun() ->
 				erlang:display("setup ..."),
-				{ok,_}= application:ensure_all_started(apns),
+				?assertMatch({ok,_}, application:ensure_all_started(apns)),
 				erlang:display("connecting ..."),
-				{ok,_}= apns:connect(?ID),
+				%%?assertMatch({ok,_}= apns:connect(?ID)),
+				?assertMatch({ok,_}, apns:connect(?ID, fun fun_error/2, fun fun_feedback/1)),
 				erlang:display("connected!")
 			end,
 		fun(_)->
@@ -29,6 +53,7 @@ apns_test_() ->
 			end,
 		{timeout, 60, fun run/0}
 	}.
+
 
 %%% Tests
 -spec run() -> any().
@@ -59,6 +84,16 @@ run_once() ->
 		   io_lib:format(" [~p] 你好！测试。",
 						 [apns:get_datetime()])),
 	?debugVal(Str),
-	?assertEqual(ok, apns:send_message(?ID, ?TOKEN, list_to_binary(Str))).
+	?assertEqual(ok, apns:send_message(?ID, get_token(), list_to_binary(Str))).
+
+
+%% @hidden
+fun_error(MsgId, Status) ->
+	error_logger:error_msg("APNS test fun_error: #~p, ~p",
+						   [apns:message_id_to_integer(MsgId), Status]).
+%% @hidden
+fun_feedback(Any) ->
+	error_logger:warning_msg("APNS test fun_feedback: ~p.", [Any]).
+
 
 -spec test() -> any().

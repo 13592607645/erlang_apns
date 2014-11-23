@@ -16,10 +16,11 @@
 
 4. 推送消息：
 目前只能推送文字内容，最多几十个汉字吧（iOS8下会多一些）。下面是示例代码（Token表示自己的设备token，请使用**UTF-8**编码格式）。
-`application:ensure_all_started(apns),
-apns:connect(myid),
-apns:send_message(myid, Token, list_to_binary("你好！测试。")).`
-
+```erlang
+    application:ensure_all_started(apns),
+    apns:connect(myid),
+    apns:send_message(myid, Token, list_to_binary("你好！测试。")).
+```
 
 ## 测试说明 ##
-修改**test/apns_test.erl**文件，替换文件顶部的TOKEN为自己的设备token。准备好证书之后，直接`make test`测试推送。
+指定设备token的方式有两种：一种是将设备token字符串（64个十六进制字符）写入**priv**目录下相应的**test.token**或**test.sandbox.token**文件，另一种是修改**test/apns_test.erl**文件，替换文件顶部的TOKEN为自己的设备token。然后准备好证书之后，执行`make test`测试推送。

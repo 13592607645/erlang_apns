@@ -3,3 +3,9 @@
 *.beam
 *.dump
 /temp
+/priv/*.pem
+/priv/*.p12
+/priv/*.cer
+/.rebar
+/.eunit
+/priv/*.token

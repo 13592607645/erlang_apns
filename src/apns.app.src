@@ -10,7 +10,7 @@
                  ]},
   {mod, {apns_app, []}},
   {env, [
-			{sandbox, true},
+			{sandbox, false},
 			{cert_file,			default},	%% cert.sandbox.pem or cert.pem
 			{key_file,			default},	%% none
 			{cert_password,		default},	%% none

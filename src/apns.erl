@@ -5,12 +5,13 @@
 %% @end
 %%-------------------------------------------------------------------
 -module(apns).
--vsn('1.0').
+-vsn('1.1').
+-date({2014,11,23}).
 
 -include("apns.hrl").
 
 -export([start/0, stop/0]).
--export([connect/1, disconnect/1]).
+-export([connect/1, disconnect/1, connect/3]).
 -export([send_message/3]).
 
 -type status() :: no_errors | processing_error | missing_token | missing_topic | missing_payload |
@@ -33,6 +34,7 @@
 -export([message_id/0, expiry/1, timestamp/1]).
 
 
+-export([get_env/2]).
 -define(APNS_HOST, "gateway.push.apple.com").
 -define(FEEDBACK_HOST, "feedback.push.apple.com").
 -define(APNS_PORT, 2195).
@@ -70,6 +72,24 @@ connect(ID) ->
 						  Conn#apns_connection.cert_file]),
 	apns_sup:start_connection(ID, Conn).
 
+-spec connect(ID::atom(),
+			  FunError::fun((MsgId::binary(),Status::atom())->any()),
+			  FunFeedback::fun((term())->any())) ->
+	{ok, pid()} | {error, Reason::term()}.
+connect(ID, FunError, FunFeedback) ->
+	apns_message_id:start_link(),
+	Conn= make_connection(),
+    error_logger:info_msg("Start connection/3(~p) with [~p] using cert of ~p.~n",
+						 [ID,
+						  Conn#apns_connection.apple_host,
+						  Conn#apns_connection.cert_file]),
+	apns_sup:start_connection(ID,
+							  Conn#apns_connection{
+								error_fun= FunError,
+								feedback_fun=FunFeedback
+							   }).
+
+
 %% @doc Close the connection
 -spec disconnect(ID::atom()) -> ok.
 disconnect(ID) ->
@@ -79,6 +99,8 @@ disconnect(ID) ->
 -spec send_message(ID::atom(), Token::apns_str(), Text::apns_str()) -> ok.
 send_message(ID, Token, Text) ->
 	Msg= #apns_msg {
+		badge= 0,
+		sound= "default",
 		device_token=
 			if
 				is_list(Token)  -> Token;
@@ -119,7 +141,6 @@ timestamp(Secs) ->
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% @hidden
 -spec get_env(Key::atom(), Def::term()) -> Val::term().
 get_env(Key, Def) ->
 	case application:get_env(apns, Key, Def) of
@@ -127,6 +148,7 @@ get_env(Key, Def) ->
 		Other  -> Other
 	end.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% @hidden
 -spec make_connection() -> #apns_connection{}.
 make_connection() ->
@@ -151,7 +173,8 @@ make_connection() ->
         timeout= get_env(timeout, Conn#apns_connection.timeout),
         feedback_timeout= get_env(feedback_timeout, Conn#apns_connection.feedback_timeout),
 		error_fun=	fun(MsgId, Status) ->
-						error_logger:error_msg("APNS error: [~w] ~p", [MsgId, Status])
+						error_logger:error_msg("APNS error: #~p, ~p",
+											   [message_id_to_integer(MsgId), Status])
 					end,
 		feedback_fun= fun(Any) ->
 						error_logger:warning_msg("APNS feedback: ~p.", [Any])
