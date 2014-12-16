@@ -5,8 +5,8 @@
 %% @end
 %%-------------------------------------------------------------------
 -module(apns).
--vsn('1.1').
--date({2014,11,23}).
+-vsn('1.2').
+-date({2014,12,16}).
 
 -include("apns.hrl").
 
@@ -47,6 +47,8 @@
 -export([get_datetime/0]).
 -export([expiry_to_datetime/1]).
 -export([message_id_to_integer/1]).
+
+-export([which_cert_file/0]).
 
 
 %% @doc Starts the application
@@ -207,4 +209,13 @@ expiry_to_datetime(Sec) ->
 -spec message_id_to_integer(Id::binary()) -> integer() | -1.
 message_id_to_integer(<<Id:4/unsigned-integer-unit:8,_/binary>>) ->
 	Id.
+
+
+%% @doc Get the cert file that is in use.
+-spec which_cert_file() -> string().
+which_cert_file() ->
+	case get_env(sandbox, false) of
+		true -> ?CERT_SANDBOX_FILE;
+		false-> ?CERT_FILE
+	end.
 
